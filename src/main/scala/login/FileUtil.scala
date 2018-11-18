@@ -8,7 +8,6 @@ import akka.http.scaladsl.model.{
 }
 import akka.http.scaladsl.model.ContentType.WithCharset
 
-import java.io.FileNotFoundException
 import java.io.{ File, FileNotFoundException }
 import scala.io.Source
 import scala.util.control.Exception.catching
@@ -21,6 +20,10 @@ object FileUtil {
 
   val currentDirectory: String =
     new File(".").getAbsoluteFile().getParent()
+
+  def exists(name: String): Boolean =
+    new File(name).exists()
+
   def readText(name: String): String = {
     catching(classOf[FileNotFoundException]).either {
       using(Source.fromFile(name, enc)) { src =>

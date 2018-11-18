@@ -1,19 +1,13 @@
 package login
 
-// import com.typesafe.scalalogging.LazyLogging
-
-// object Main extends App with LazyLogging {
-
-  // def helloWorld(name: String): String = {
-    // "Hello " + name + "!"
-  // }
-
-  // logger.info(helloWorld("nabezokodaikokn"))
-// }
-
 import com.typesafe.config.{ ConfigFactory }
 import akka.actor.ActorSystem
 import akka.event.Logging
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.Http.ServerBinding
+import akka.stream.ActorMaterializer
+import scala.concurrent.Future
+import scala.util.{ Failure, Success }
 
 object Main extends App {
 
@@ -23,25 +17,42 @@ object Main extends App {
 
   implicit val system = ActorSystem("login")
   // // bindAndHandleは暗黙のExecutionContextが必要
-  // implicit val executionContext = system.dispatcher
+  implicit val executionContext = system.dispatcher
 
-  val log =  Logging(system.eventStream, "application")
+  val log = Logging(system.eventStream, "application")
   log.debug(s"host: ${host}, port: ${port}")
 
-  // val api = new RestApi(system, requestTimeout(config)).routes // the RestApi provides a Route
+  val api = new ServerApi(system).routes
 
-  // implicit val materializer = ActorMaterializer()
-  // val bindingFuture: Future[ServerBinding] =
-    // Http().bindAndHandle(api, host, port) // HTTPサーバーの起動
+  implicit val materializer = ActorMaterializer()
+  val bindingFuture: Future[ServerBinding] =
+    Http().bindAndHandle(api, host, port)
 
-  // val log =  Logging(system.eventStream, "go-ticks")
-  // bindingFuture.map { serverBinding =>
-    // log.info(s"RestApi bound to ${serverBinding.localAddress} ")
-  // }.onComplete {
-    // case Success(_) =>
-      // log.info("Success to bind to {}:{}", host, port)
-    // case Failure(ex) =>
-      // log.error(ex, "Failed to bind to {}:{}!", host, port)
-      // system.terminate()
+  bindingFuture.map { serverBinding =>
+    log.info(s"RestApi bound to ${serverBinding.localAddress} ")
+  }.onComplete {
+    case Success(_) =>
+      log.info(s"Success to bind to ${host}:${port}")
+    case Failure(ex) =>
+      log.error(ex, s"Failed to bind to ${host}:${port}!")
+      system.terminate()
+  }
+
+  import scala.concurrent.Await
+  import scala.concurrent.duration._
+  import akka.actor.CoordinatedShutdown
+  // CoordinatedShutdown(system).addTask(
+  // CoordinatedShutdown.PhaseBeforeServiceUnbind, "app-shutdown"
+  // ) { () =>
+  // // killSwitch.shutdown()
+  // system.terminate()
+  // Await.result(bindingFuture, Duration.Inf)
+  // Future.successful(akka.Done)
   // }
+
+  CoordinatedShutdown(system).addJvmShutdownHook {
+    system.terminate()
+    Await.result(bindingFuture, Duration.Inf)
+  }
+
 }

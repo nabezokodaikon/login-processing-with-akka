@@ -8,15 +8,17 @@ import akka.http.scaladsl.model.{
 }
 import akka.http.scaladsl.model.ContentType.WithCharset
 
-import java.io.{ File, FileNotFoundException }
-import scala.io.Source
+import java.io.{
+  File,
+  IOException,
+  BufferedInputStream,
+  FileInputStream
+}
 import scala.util.control.Exception.catching
 
 import Loan.using
 
 object FileUtil {
-
-  private val enc = "UTF-8"
 
   val currentDirectory: String =
     new File(".").getAbsoluteFile().getParent()
@@ -24,14 +26,14 @@ object FileUtil {
   def exists(name: String): Boolean =
     new File(name).exists()
 
-  def readText(name: String): String = {
-    catching(classOf[FileNotFoundException]).either {
-      using(Source.fromFile(name, enc)) { src =>
-        src.mkString
+  def readBinary(name: String): Array[Byte] = {
+    catching(classOf[IOException]).either {
+      using(new BufferedInputStream(new FileInputStream(name))) { in =>
+        Stream.continually(in.read).takeWhile(!_.equals(-1)).map(_.toByte).toArray
       }
     } match {
-      case Right(text) => text
-      case Left(e) => e.getMessage
+      case Right(bin) => bin
+      case Left(_) => Array[Byte]()
     }
   }
 

@@ -6,7 +6,10 @@ import akka.actor.{ Actor, Props }
 import akka.actor.ActorLogging
 import akka.actor.ActorSystem
 
-import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.model.{
+  HttpEntity,
+  StatusCodes
+}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 
@@ -34,6 +37,7 @@ trait ServerRoutes
 
   def routes: Route =
     publicIndexRoute ~
+      loginRoute ~
       privateIndexRoute
 
   def publicIndexRoute =
@@ -45,6 +49,25 @@ trait ServerRoutes
         complete(HttpEntity(contentType, text))
       }
     }
+
+  def loginRoute =
+    path("login") {
+      get {
+        val file = s"${publicDirectory}/login.html"
+        val contentType = FileUtil.getContentType(file)
+        val text = FileUtil.readBinary(file)
+        complete(HttpEntity(contentType, text))
+      }
+    } ~
+      path("loginProcess") {
+        post {
+          formFields(("userId", "password", "isRememberMe".?)) {
+            (userId, password, isRememberMe) =>
+              println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}")
+              complete(StatusCodes.OK)
+          }
+        }
+      }
 
   def privateIndexRoute =
     path("member") {

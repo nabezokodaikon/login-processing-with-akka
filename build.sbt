@@ -24,6 +24,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
+    "com.softwaremill.akka-http-session" %% "core" % "0.5.6",
   )
 }
 

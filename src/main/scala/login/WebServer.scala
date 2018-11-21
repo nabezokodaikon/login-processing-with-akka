@@ -76,69 +76,56 @@ class ServerApi(system: ActorSystem)
     s"${current}/content/private"
   }
 
+  private def createEntity(file: String) = {
+    val contentType = FileUtil.getContentType(file)
+    val text = FileUtil.readBinary(file)
+    HttpEntity(contentType, text)
+  }
+
   def routes: Route =
     publicRoute ~
+      loginRoute ~
       privateRoute
 
   private def publicRoute =
     pathSingleSlash {
       get {
         val file = s"${publicDirectory}/index.html"
-        val contentType = FileUtil.getContentType(file)
-        val text = FileUtil.readBinary(file)
-        complete(HttpEntity(contentType, text))
+        complete(createEntity(file))
       }
     } ~
-      path("login") {
-        get {
-          val file = s"${publicDirectory}/login.html"
-          val contentType = FileUtil.getContentType(file)
-          val text = FileUtil.readBinary(file)
-          complete(HttpEntity(contentType, text))
-        }
-      } ~
       pathPrefix("contents") {
         path(Segments) { x: List[String] =>
           get {
             val segments = x.mkString("/")
-
             val path = s"${publicDirectory}/dir/${segments}"
-            val file = path match {
-              case f if FileUtil.exists(f) => f
-              case _ => path
+            path match {
+              case f if FileUtil.exists(f) => complete(createEntity(f))
+              case _ => complete(StatusCodes.NotFound)
             }
-
-            val contentType = FileUtil.getContentType(file)
-            val data = FileUtil.readBinary(file)
-            complete(HttpEntity(contentType, data))
           }
         }
       }
 
-  private def privateRoute =
-    path("doLogin") {
-      post {
-        formFields(("userId", "password", "isRememberMe".?)) {
-          (userId, password, isRememberMe) =>
-            println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}")
-            if (exampleUsers.contains(ExampleUser(userId, password))) {
-              userSetSession(UserSession(userId)) {
-                redirect("member", StatusCodes.SeeOther)
-              }
-            } else {
-              redirect("login", StatusCodes.SeeOther)
-            }
-        }
+  private def loginRoute =
+    path("login") {
+      get {
+        val file = s"${publicDirectory}/login.html"
+        complete(createEntity(file))
       }
     } ~
-      path("member") {
-        get {
-          userRequiredSession { userSession =>
-            println(userSession)
-            val file = s"${privateDirectory}/index.html"
-            val contentType = FileUtil.getContentType(file)
-            val text = FileUtil.readBinary(file)
-            complete(HttpEntity(contentType, text))
+      path("doLogin") {
+        post {
+          formFields(("userId", "password", "isRememberMe".?)) {
+            (userId, password, isRememberMe) =>
+              println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}")
+              if (exampleUsers.contains(ExampleUser(userId, password))) {
+                userSetSession(UserSession(userId)) {
+                  redirect("member", StatusCodes.SeeOther)
+                }
+              } else {
+                redirect("login", StatusCodes.SeeOther)
+              }
           }
         }
       } ~
@@ -148,21 +135,29 @@ class ServerApi(system: ActorSystem)
             redirect("login", StatusCodes.SeeOther)
           }
         }
-      } ~
+      }
+
+  private def privateRoute =
+    path("member") {
+      get {
+        userRequiredSession { userSession =>
+          println(userSession)
+          val file = s"${privateDirectory}/index.html"
+          complete(createEntity(file))
+        }
+      }
+    } ~
       path("member" / "contents" / Segments) { x: List[String] =>
         get {
-          println("member contents")
-          val segments = x.mkString("/")
-
-          val path = s"${privateDirectory}/dir/${segments}"
-          val file = path match {
-            case f if FileUtil.exists(f) => f
-            case _ => path
+          userRequiredSession { userSession =>
+            println(userSession)
+            val segments = x.mkString("/")
+            val path = s"${privateDirectory}/dir/${segments}"
+            path match {
+              case f if FileUtil.exists(f) => complete(createEntity(f))
+              case _ => complete(StatusCodes.NotFound)
+            }
           }
-
-          val contentType = FileUtil.getContentType(file)
-          val data = FileUtil.readBinary(file)
-          complete(HttpEntity(contentType, data))
         }
       }
 }

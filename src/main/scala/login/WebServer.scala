@@ -96,6 +96,23 @@ class ServerApi(system: ActorSystem)
           val text = FileUtil.readBinary(file)
           complete(HttpEntity(contentType, text))
         }
+      } ~
+      pathPrefix("contents") {
+        path(Segments) { x: List[String] =>
+          get {
+            val segments = x.mkString("/")
+
+            val path = s"${publicDirectory}/dir/${segments}"
+            val file = path match {
+              case f if FileUtil.exists(f) => f
+              case _ => path
+            }
+
+            val contentType = FileUtil.getContentType(file)
+            val data = FileUtil.readBinary(file)
+            complete(HttpEntity(contentType, data))
+          }
+        }
       }
 
   private def privateRoute =
@@ -127,12 +144,25 @@ class ServerApi(system: ActorSystem)
       } ~
       path("logout") {
         get {
-          userRequiredSession { userSession =>
-            println(userSession)
-            userInvalidateSession {
-              redirect("login", StatusCodes.SeeOther)
-            }
+          userInvalidateSession {
+            redirect("login", StatusCodes.SeeOther)
           }
+        }
+      } ~
+      path("member" / "contents" / Segments) { x: List[String] =>
+        get {
+          println("member contents")
+          val segments = x.mkString("/")
+
+          val path = s"${privateDirectory}/dir/${segments}"
+          val file = path match {
+            case f if FileUtil.exists(f) => f
+            case _ => path
+          }
+
+          val contentType = FileUtil.getContentType(file)
+          val data = FileUtil.readBinary(file)
+          complete(HttpEntity(contentType, data))
         }
       }
 }

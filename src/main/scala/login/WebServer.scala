@@ -12,6 +12,7 @@ import akka.http.scaladsl.model.{
   HttpEntity,
   StatusCodes
 }
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 
@@ -69,18 +70,27 @@ class ServerApi(system: ActorSystem)
 
   private val publicDirectory = {
     val current = FileUtil.currentDirectory
-    s"${current}/content/public"
+    s"${current}/contents/public"
   }
 
   private val privateDirectory = {
     val current = FileUtil.currentDirectory
-    s"${current}/content/private"
+    s"${current}/contents/private"
   }
 
-  private def createEntity(file: String) = {
+  private def createResponse(file: String): ToResponseMarshallable = {
     val contentType = FileUtil.getContentType(file)
     val text = FileUtil.readBinary(file)
     HttpEntity(contentType, text)
+  }
+
+  private def createResponse(dir: String, segmentsList: List[String]): ToResponseMarshallable = {
+    val segments = segmentsList.mkString("/")
+    val path = s"${dir}/dir/${segments}"
+    path match {
+      case f if FileUtil.exists(f) => createResponse(f)
+      case _ => StatusCodes.NotFound
+    }
   }
 
   def routes: Route =
@@ -90,47 +100,45 @@ class ServerApi(system: ActorSystem)
   private def contentsRoute =
     pathSingleSlash {
       get {
+        // ブラウザ終了後もセッションを維持する場合。(維持しない場合、oneOffを使用する。)
         session(refreshable, usingCookies) { sessionResult =>
           sessionResult match {
             case Decoded(session) =>
               println(session)
               val file = s"${privateDirectory}/index.html"
-              complete(createEntity(file))
+              complete(createResponse(file))
             case DecodedLegacy(session) =>
               println(session)
               val file = s"${privateDirectory}/index.html"
-              complete(createEntity(file))
+              complete(createResponse(file))
             case CreatedFromToken(session) =>
               println(session)
               val file = s"${privateDirectory}/index.html"
-              complete(createEntity(file))
+              complete(createResponse(file))
             case _ =>
               val file = s"${publicDirectory}/index.html"
-              complete(createEntity(file))
+              complete(createResponse(file))
           }
         }
       }
     } ~
       pathPrefix("contents") {
-        path(Segments) { x: List[String] =>
+        path(Segments) { segments: List[String] =>
           get {
+            // ブラウザ終了後もセッションを維持する場合。(維持しない場合、oneOffを使用する。)
             session(refreshable, usingCookies) { sessionResult =>
               sessionResult match {
                 case Decoded(session) =>
                   println(session)
-                  val segments = x.mkString("/")
-                  val path = s"${privateDirectory}/dir/${segments}"
-                  path match {
-                    case f if FileUtil.exists(f) => complete(createEntity(f))
-                    case _ => complete(StatusCodes.NotFound)
-                  }
+                  complete(createResponse(privateDirectory, segments))
+                case DecodedLegacy(session) =>
+                  println(session)
+                  complete(createResponse(privateDirectory, segments))
+                case CreatedFromToken(session) =>
+                  println(session)
+                  complete(createResponse(privateDirectory, segments))
                 case _ =>
-                  val segments = x.mkString("/")
-                  val path = s"${publicDirectory}/dir/${segments}"
-                  path match {
-                    case f if FileUtil.exists(f) => complete(createEntity(f))
-                    case _ => complete(StatusCodes.NotFound)
-                  }
+                  complete(createResponse(publicDirectory, segments))
               }
             }
           }
@@ -141,7 +149,7 @@ class ServerApi(system: ActorSystem)
     path("login") {
       get {
         val file = s"${publicDirectory}/login.html"
-        complete(createEntity(file))
+        complete(createResponse(file))
       }
     } ~
       path("doLogin") {

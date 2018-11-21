@@ -23,8 +23,6 @@ import com.softwaremill.session.{
   SingleValueSessionSerializer,
   SessionUtil
 }
-import com.softwaremill.session.CsrfDirectives._
-import com.softwaremill.session.CsrfOptions._
 import com.softwaremill.session.SessionDirectives._
 import com.softwaremill.session.SessionOptions._
 

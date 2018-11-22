@@ -7,7 +7,13 @@
   <body>
     <a href="/logout">Logout</a>
     <h1>Private index</h1>
+    <h2 id="user"></h2>
     <a href="/contents/001.html">001</a>
     <a href="/contents/sub/002.html">002</a>
+    <script type="text/javascript">
+        fetch("getUser", { method: "GET" })
+        .then(res => res.text())
+        .then(text => document.getElementById("user").innerHTML = `Hello ${text}`)
+    </script>
   </body>
 </html>

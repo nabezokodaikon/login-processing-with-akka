@@ -58,15 +58,8 @@ class ServerApi(system: ActorSystem)
     def log(msg: String) = logger.info(msg)
   }
 
-  // ブラウザ終了後もセッションを維持する場合。
-  private def userSetSession(session: UserSession) = setSession(refreshable, usingCookies, session)
   // private val userRequiredSession = requiredSession(refreshable, usingCookies)
   private val userInvalidateSession = invalidateSession(refreshable, usingCookies)
-
-  // ブラウザ終了時にセッションを終了する場合。
-  // private def userSetSession(session: UserSession) = setSession(oneOff, usingCookies, session)
-  // private val userRequiredSession = requiredSession(oneOff, usingCookies)
-  // private val userInvalidateSession = invalidateSession(oneOff, usingCookies)
 
   private val publicDirectory = {
     val current = FileUtil.currentDirectory
@@ -100,7 +93,6 @@ class ServerApi(system: ActorSystem)
   private def contentsRoute =
     pathSingleSlash {
       get {
-        // ブラウザ終了後もセッションを維持する場合。(維持しない場合、oneOffを使用する。)
         session(refreshable, usingCookies) { sessionResult =>
           sessionResult match {
             case Decoded(session) =>
@@ -125,7 +117,6 @@ class ServerApi(system: ActorSystem)
       pathPrefix("contents") {
         path(Segments) { segments: List[String] =>
           get {
-            // ブラウザ終了後もセッションを維持する場合。(維持しない場合、oneOffを使用する。)
             session(refreshable, usingCookies) { sessionResult =>
               sessionResult match {
                 case Decoded(session) =>
@@ -154,16 +145,36 @@ class ServerApi(system: ActorSystem)
     } ~
       path("doLogin") {
         post {
-          formFields(("userId", "password", "isRememberMe".?)) {
+          formFields(('userId.as[String], 'password.as[String], 'isRememberMe.?)) {
             (userId, password, isRememberMe) =>
               println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}")
               if (exampleUsers.contains(ExampleUser(userId, password))) {
-                userSetSession(UserSession(userId)) {
+                val sessionContinuity = isRememberMe match {
+                  case Some(_) => refreshable
+                  case None => oneOff
+                }
+                setSession(sessionContinuity, usingCookies, UserSession(userId)) {
                   redirect("/", StatusCodes.SeeOther)
                 }
               } else {
                 redirect("login", StatusCodes.SeeOther)
               }
+          }
+        }
+      } ~
+      path("getUser") {
+        get {
+          session(refreshable, usingCookies) { sessionResult =>
+            sessionResult match {
+              case Decoded(session) =>
+                complete(session.userId)
+              case DecodedLegacy(session) =>
+                complete(session.userId)
+              case CreatedFromToken(session) =>
+                complete(session.userId)
+              case _ =>
+                complete("unknown")
+            }
           }
         }
       } ~

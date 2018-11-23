@@ -86,6 +86,12 @@ class ServerApi(system: ActorSystem)
     }
   }
 
+  private def existsContent(dir: String, segmentsList: List[String]): Boolean = {
+    val segments = segmentsList.mkString("/")
+    val path = s"${dir}/dir/${segments}"
+    FileUtil.exists(path)
+  }
+
   def routes: Route =
     contentsRoute ~
       loginRoute

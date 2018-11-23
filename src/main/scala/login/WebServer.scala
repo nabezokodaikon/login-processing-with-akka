@@ -164,10 +164,10 @@ class ServerApi(system: ActorSystem)
                   case None => oneOff
                 }
                 setSession(sessionContinuity, usingCookies, UserSession(userId)) {
-                  redirect("/", StatusCodes.SeeOther)
+                  redirect("/login", StatusCodes.SeeOther)
                 }
               } else {
-                redirect("login", StatusCodes.SeeOther)
+                redirect("/login", StatusCodes.SeeOther)
               }
           }
         }
@@ -191,7 +191,7 @@ class ServerApi(system: ActorSystem)
       path("logout") {
         get {
           userInvalidateSession {
-            redirect("login", StatusCodes.SeeOther)
+            redirect("/login", StatusCodes.SeeOther)
           }
         }
       }

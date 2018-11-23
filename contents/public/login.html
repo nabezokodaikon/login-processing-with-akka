@@ -28,9 +28,17 @@
       </div>
     </form>
     <script type="text/javascript">
-      const pathname = location.pathname;
-      const referrer = pathname == "/login" ? "/" : pathname;
-      document.getElementById("referrer").value = referrer;
+
+      const host = location.origin;
+      const ref = document.referrer.replace(host, "");
+      const path = location.pathname;
+
+      if (path == "/login") {
+        document.getElementById("referrer").value = "/";
+      } else {
+        document.getElementById("referrer").value = path;
+      }
+
     </script>
   </body>
 </html>

@@ -160,7 +160,12 @@ class ServerApi(system: ActorSystem)
                   redirect(referrer, StatusCodes.SeeOther)
                 }
               } else {
-                redirect(referrer, StatusCodes.SeeOther)
+                referrer match {
+                  case ref if ref == "/" =>
+                    redirect("/login", StatusCodes.SeeOther)
+                  case _ =>
+                    redirect(referrer, StatusCodes.SeeOther)
+                }
               }
           }
         }

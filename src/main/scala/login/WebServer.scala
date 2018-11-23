@@ -135,7 +135,11 @@ class ServerApi(system: ActorSystem)
                   println(session)
                   complete(createResponse(privateDirectory, segments))
                 case _ =>
-                  complete(createResponse(publicDirectory, segments))
+                  if (existsContent(privateDirectory, segments)) {
+                    redirect("/login", StatusCodes.SeeOther)
+                  } else {
+                    complete(createResponse(publicDirectory, segments))
+                  }
               }
             }
           }

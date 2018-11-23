@@ -21,8 +21,16 @@
         <input id="isRememberMe" name="isRememberMe" type="checkbox">
       </div>
       <div>
+        <input id="referrer" name="referrer" type="hidden">
+      </div>
+      <div>
         <input type="submit" value="Send">
       </div>
     </form>
+    <script type="text/javascript">
+      const pathname = location.pathname;
+      const referrer = pathname == "/login" ? "/" : pathname;
+      document.getElementById("referrer").value = referrer;
+    </script>
   </body>
 </html>

@@ -101,16 +101,13 @@ class ServerApi(system: ActorSystem)
       get {
         session(refreshable, usingCookies) { sessionResult =>
           sessionResult match {
-            case Decoded(session) =>
-              println(session)
+            case Decoded(_) =>
               val file = s"${privateDirectory}/index.html"
               complete(createResponse(file))
-            case DecodedLegacy(session) =>
-              println(session)
+            case DecodedLegacy(_) =>
               val file = s"${privateDirectory}/index.html"
               complete(createResponse(file))
-            case CreatedFromToken(session) =>
-              println(session)
+            case CreatedFromToken(_) =>
               val file = s"${privateDirectory}/index.html"
               complete(createResponse(file))
             case _ =>
@@ -125,21 +122,17 @@ class ServerApi(system: ActorSystem)
           get {
             session(refreshable, usingCookies) { sessionResult =>
               sessionResult match {
-                case Decoded(session) =>
-                  println(session)
+                case Decoded(_) if existsContent(privateDirectory, segments) =>
                   complete(createResponse(privateDirectory, segments))
-                case DecodedLegacy(session) =>
-                  println(session)
+                case DecodedLegacy(_) if existsContent(privateDirectory, segments) =>
                   complete(createResponse(privateDirectory, segments))
-                case CreatedFromToken(session) =>
-                  println(session)
+                case CreatedFromToken(_) if existsContent(privateDirectory, segments) =>
                   complete(createResponse(privateDirectory, segments))
+                case _ if existsContent(privateDirectory, segments) =>
+                  val file = s"${publicDirectory}/login.html"
+                  complete(createResponse(file))
                 case _ =>
-                  if (existsContent(privateDirectory, segments)) {
-                    redirect("/login", StatusCodes.SeeOther)
-                  } else {
-                    complete(createResponse(publicDirectory, segments))
-                  }
+                  complete(createResponse(publicDirectory, segments))
               }
             }
           }
@@ -155,19 +148,19 @@ class ServerApi(system: ActorSystem)
     } ~
       path("doLogin") {
         post {
-          formFields(('userId.as[String], 'password.as[String], 'isRememberMe.?)) {
-            (userId, password, isRememberMe) =>
-              println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}")
+          formFields(('userId, 'password, 'isRememberMe.?, 'referrer)) {
+            (userId, password, isRememberMe, referrer) =>
+              println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}, referrer: ${referrer}")
               if (exampleUsers.contains(ExampleUser(userId, password))) {
                 val sessionContinuity = isRememberMe match {
                   case Some(_) => refreshable
                   case None => oneOff
                 }
                 setSession(sessionContinuity, usingCookies, UserSession(userId)) {
-                  redirect("/login", StatusCodes.SeeOther)
+                  redirect(referrer, StatusCodes.SeeOther)
                 }
               } else {
-                redirect("/login", StatusCodes.SeeOther)
+                redirect(referrer, StatusCodes.SeeOther)
               }
           }
         }

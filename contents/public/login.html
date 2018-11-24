@@ -23,6 +23,9 @@
       <div>
         <input id="referrer" name="referrer" type="hidden">
       </div>
+      <div id="loginFailed" style="display:none">
+        <p>ID入力内容またはパスワードが間違っています。</p>
+      </div>
       <div>
         <input type="submit" value="Send">
       </div>
@@ -32,6 +35,23 @@
       const host = location.origin;
       const ref = document.referrer.replace(host, "");
       const path = location.pathname;
+
+      console.log(`ref: ${ref}`);
+      console.log(`path: ${path}`);
+
+      if (ref.length > 1) {
+        document.getElementById("loginFailed").style.display = "";
+      } else {
+        document.getElementById("loginFailed").style.display = "none";
+      }
+
+      if (path == "/login"){
+        document.getElementById("loginFailed").style.display = "none";
+      }
+
+      if (ref == "/login"){
+        document.getElementById("loginFailed").style.display = "";
+      }
 
       if (path == "/login") {
         document.getElementById("referrer").value = "/";

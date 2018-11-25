@@ -80,7 +80,7 @@ class ServerApi(system: ActorSystem)
 
   private def createResponse(dir: String, segmentsList: List[String]): ToResponseMarshallable = {
     val segments = segmentsList.mkString("/")
-    val path = s"${dir}/dir/${segments}"
+    val path = s"${dir}/${segments}"
     path match {
       case f if FileUtil.exists(f) => createResponse(f)
       case _ => StatusCodes.NotFound
@@ -89,7 +89,7 @@ class ServerApi(system: ActorSystem)
 
   private def existsContent(dir: String, segmentsList: List[String]): Boolean = {
     val segments = segmentsList.mkString("/")
-    val path = s"${dir}/dir/${segments}"
+    val path = s"${dir}/${segments}"
     FileUtil.exists(path)
   }
 
@@ -152,7 +152,6 @@ class ServerApi(system: ActorSystem)
           post {
             formFields(("userId", "password", "isRememberMe".?, "referrer")) {
               (userId, password, isRememberMe, referrer) =>
-                println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}, referrer: ${referrer}")
                 if (exampleUsers.contains(ExampleUser(userId, password))) {
                   val sessionContinuity = isRememberMe match {
                     case Some(_) => refreshable

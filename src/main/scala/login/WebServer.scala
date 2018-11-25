@@ -1,5 +1,6 @@
 package login
 
+import scala.concurrent.duration._
 import scala.util.Try
 
 import com.typesafe.scalalogging.LazyLogging
@@ -146,27 +147,29 @@ class ServerApi(system: ActorSystem)
         complete(createResponse(file))
       }
     } ~
-      path("doLogin") {
-        post {
-          formFields(('userId, 'password, 'isRememberMe.?, 'referrer)) {
-            (userId, password, isRememberMe, referrer) =>
-              println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}, referrer: ${referrer}")
-              if (exampleUsers.contains(ExampleUser(userId, password))) {
-                val sessionContinuity = isRememberMe match {
-                  case Some(_) => refreshable
-                  case None => oneOff
-                }
-                setSession(sessionContinuity, usingCookies, UserSession(userId)) {
-                  redirect(referrer, StatusCodes.SeeOther)
-                }
-              } else {
-                referrer match {
-                  case ref if ref == "/" =>
-                    redirect("/login", StatusCodes.SeeOther)
-                  case _ =>
+      toStrictEntity(3.seconds) {
+        path("doLogin") {
+          post {
+            formFields(("userId", "password", "isRememberMe".?, "referrer")) {
+              (userId, password, isRememberMe, referrer) =>
+                println(s"userId: ${userId}, password: ${password}, isRememberMe: ${isRememberMe}, referrer: ${referrer}")
+                if (exampleUsers.contains(ExampleUser(userId, password))) {
+                  val sessionContinuity = isRememberMe match {
+                    case Some(_) => refreshable
+                    case None => oneOff
+                  }
+                  setSession(sessionContinuity, usingCookies, UserSession(userId)) {
                     redirect(referrer, StatusCodes.SeeOther)
+                  }
+                } else {
+                  referrer match {
+                    case ref if ref == "/" =>
+                      redirect("/login", StatusCodes.SeeOther)
+                    case _ =>
+                      redirect(referrer, StatusCodes.SeeOther)
+                  }
                 }
-              }
+            }
           }
         }
       } ~

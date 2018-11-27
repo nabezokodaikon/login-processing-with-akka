@@ -36,8 +36,46 @@ object UserSession {
     new SingleValueSessionSerializer(_.userId, (userId: String) => Try { UserSession(userId) })
 }
 
+object ServerApi {
+
+  val publicDirectory = {
+    val current = FileUtil.currentDirectory
+    s"${current}/contents/public"
+  }
+
+  val privateDirectory = {
+    val current = FileUtil.currentDirectory
+    s"${current}/contents/private"
+  }
+
+  def createResponse(file: String): ToResponseMarshallable = {
+    val contentType = FileUtil.getContentType(file)
+    val text = FileUtil.readBinary(file)
+    HttpEntity(contentType, text)
+  }
+
+  def createResponse(dir: String, segmentsList: List[String]): ToResponseMarshallable = {
+    val segments = segmentsList.mkString("/")
+    val path = s"${dir}/${segments}"
+    path match {
+      case f if FileUtil.exists(f) => createResponse(f)
+      case _ => StatusCodes.NotFound
+    }
+  }
+
+  def existsContent(dir: String, segmentsList: List[String]): Boolean = {
+    val segments = segmentsList.mkString("/")
+    val path = s"${dir}/${segments}"
+    FileUtil.exists(path)
+  }
+
+}
+
 class ServerApi(system: ActorSystem)
   extends LazyLogging {
+
+  import ServerApi._
+
   implicit def executionContext = system.dispatcher
 
   // Shutdown example
@@ -62,60 +100,35 @@ class ServerApi(system: ActorSystem)
   // private val userRequiredSession = requiredSession(refreshable, usingCookies)
   private val userInvalidateSession = invalidateSession(refreshable, usingCookies)
 
-  private val publicDirectory = {
-    val current = FileUtil.currentDirectory
-    s"${current}/contents/public"
-  }
-
-  private val privateDirectory = {
-    val current = FileUtil.currentDirectory
-    s"${current}/contents/private"
-  }
-
-  private def createResponse(file: String): ToResponseMarshallable = {
-    val contentType = FileUtil.getContentType(file)
-    val text = FileUtil.readBinary(file)
-    HttpEntity(contentType, text)
-  }
-
-  private def createResponse(dir: String, segmentsList: List[String]): ToResponseMarshallable = {
-    val segments = segmentsList.mkString("/")
-    val path = s"${dir}/${segments}"
-    path match {
-      case f if FileUtil.exists(f) => createResponse(f)
-      case _ => StatusCodes.NotFound
-    }
-  }
-
-  private def existsContent(dir: String, segmentsList: List[String]): Boolean = {
-    val segments = segmentsList.mkString("/")
-    val path = s"${dir}/${segments}"
-    FileUtil.exists(path)
-  }
-
   def routes: Route =
-    contentsRoute ~
-      loginRoute
+    loginRoute
 
-  private def contentsRoute =
+  // private def contentsRoute =
+  // pathSingleSlash {
+  // get {
+  // session(refreshable, usingCookies) { sessionResult =>
+  // sessionResult match {
+  // case Decoded(_) =>
+  // val file = s"${privateDirectory}/index.html"
+  // complete(createResponse(file))
+  // case DecodedLegacy(_) =>
+  // val file = s"${privateDirectory}/index.html"
+  // complete(createResponse(file))
+  // case CreatedFromToken(_) =>
+  // val file = s"${privateDirectory}/index.html"
+  // complete(createResponse(file))
+  // case _ =>
+  // val file = s"${publicDirectory}/index.html"
+  // complete(createResponse(file))
+  // }
+  // }
+  // }
+  // } ~
+  def publicRoute =
     pathSingleSlash {
       get {
-        session(refreshable, usingCookies) { sessionResult =>
-          sessionResult match {
-            case Decoded(_) =>
-              val file = s"${privateDirectory}/index.html"
-              complete(createResponse(file))
-            case DecodedLegacy(_) =>
-              val file = s"${privateDirectory}/index.html"
-              complete(createResponse(file))
-            case CreatedFromToken(_) =>
-              val file = s"${privateDirectory}/index.html"
-              complete(createResponse(file))
-            case _ =>
-              val file = s"${publicDirectory}/index.html"
-              complete(createResponse(file))
-          }
-        }
+        val file = s"${publicDirectory}/index.html"
+        complete(createResponse(file))
       }
     } ~
       pathPrefix("contents") {
@@ -140,7 +153,7 @@ class ServerApi(system: ActorSystem)
         }
       }
 
-  private def loginRoute =
+  def loginRoute =
     path("login") {
       get {
         val file = s"${publicDirectory}/login.html"

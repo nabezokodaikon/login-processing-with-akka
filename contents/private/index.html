@@ -10,12 +10,12 @@
     <h2 id="user"></h2>
     <a href="/contents/001.html">001</a>
     <a href="/contents/sub/002.html">002</a>
-    <a href="/contents/003.html">003</a>
-    <a href="/contents/004.html">004</a>
-    <a href="/contents/sub/005.html">005</a>
-    <a href="/contents/sub/006.html">006</a>
+    <a href="/members/003.html">003</a>
+    <a href="/members/004.html">004</a>
+    <a href="/members/sub/005.html">005</a>
+    <a href="/members/sub/006.html">006</a>
     <script type="text/javascript">
-        fetch("getUser", { method: "GET", credentials: "same-origin" })
+        fetch("/getUser", { method: "GET", credentials: "same-origin" })
         .then(res => res.text())
         .then(text => document.getElementById("user").innerHTML = `Hello ${text}`);
     </script>

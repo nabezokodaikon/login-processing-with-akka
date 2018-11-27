@@ -101,29 +101,10 @@ class ServerApi(system: ActorSystem)
   private val userInvalidateSession = invalidateSession(refreshable, usingCookies)
 
   def routes: Route =
-    loginRoute
+    publicRoute ~
+      privateRoute ~
+      loginRoute
 
-  // private def contentsRoute =
-  // pathSingleSlash {
-  // get {
-  // session(refreshable, usingCookies) { sessionResult =>
-  // sessionResult match {
-  // case Decoded(_) =>
-  // val file = s"${privateDirectory}/index.html"
-  // complete(createResponse(file))
-  // case DecodedLegacy(_) =>
-  // val file = s"${privateDirectory}/index.html"
-  // complete(createResponse(file))
-  // case CreatedFromToken(_) =>
-  // val file = s"${privateDirectory}/index.html"
-  // complete(createResponse(file))
-  // case _ =>
-  // val file = s"${publicDirectory}/index.html"
-  // complete(createResponse(file))
-  // }
-  // }
-  // }
-  // } ~
   def publicRoute =
     pathSingleSlash {
       get {
@@ -134,80 +115,104 @@ class ServerApi(system: ActorSystem)
       pathPrefix("contents") {
         path(Segments) { segments: List[String] =>
           get {
-            session(refreshable, usingCookies) { sessionResult =>
-              sessionResult match {
-                case Decoded(_) if existsContent(privateDirectory, segments) =>
-                  complete(createResponse(privateDirectory, segments))
-                case DecodedLegacy(_) if existsContent(privateDirectory, segments) =>
-                  complete(createResponse(privateDirectory, segments))
-                case CreatedFromToken(_) if existsContent(privateDirectory, segments) =>
-                  complete(createResponse(privateDirectory, segments))
-                case _ if existsContent(privateDirectory, segments) =>
-                  val file = s"${publicDirectory}/login.html"
-                  complete(createResponse(file))
-                case _ =>
-                  complete(createResponse(publicDirectory, segments))
-              }
-            }
+            complete(createResponse(publicDirectory, segments))
           }
         }
       }
 
-  def loginRoute =
-    path("login") {
-      get {
-        val file = s"${publicDirectory}/login.html"
-        complete(createResponse(file))
-      }
-    } ~
-      toStrictEntity(3.seconds) {
-        path("doLogin") {
-          post {
-            formFields(("userId", "password", "isRememberMe".?, "referrer")) {
-              (userId, password, isRememberMe, referrer) =>
-                if (exampleUsers.contains(ExampleUser(userId, password))) {
-                  val sessionContinuity = isRememberMe match {
-                    case Some(_) => refreshable
-                    case None => oneOff
-                  }
-                  setSession(sessionContinuity, usingCookies, UserSession(userId)) {
-                    redirect(referrer, StatusCodes.SeeOther)
-                  }
-                } else {
-                  referrer match {
-                    case ref if ref == "/" =>
-                      redirect("/login", StatusCodes.SeeOther)
-                    case _ =>
-                      redirect(referrer, StatusCodes.SeeOther)
-                  }
-                }
-            }
-          }
-        }
-      } ~
-      path("getUser") {
+  def privateRoute =
+    pathPrefix("members") {
+      path(Segments) { segments: List[String] =>
         get {
           session(refreshable, usingCookies) { sessionResult =>
             sessionResult match {
-              case Decoded(session) =>
-                complete(session.userId)
-              case DecodedLegacy(session) =>
-                complete(session.userId)
-              case CreatedFromToken(session) =>
-                complete(session.userId)
+              case Decoded(_) if existsContent(privateDirectory, segments) =>
+                complete(createResponse(privateDirectory, segments))
+              case DecodedLegacy(_) if existsContent(privateDirectory, segments) =>
+                complete(createResponse(privateDirectory, segments))
+              case CreatedFromToken(_) if existsContent(privateDirectory, segments) =>
+                complete(createResponse(privateDirectory, segments))
+              case _ if existsContent(privateDirectory, segments) =>
+                val file = s"${publicDirectory}/login.html"
+                complete(createResponse(file))
               case _ =>
-                complete("unknown")
+                complete(StatusCodes.NotFound)
             }
           }
         }
-      } ~
-      path("logout") {
+      }
+    }
+
+  import com.softwaremill.session.CsrfDirectives._
+  import com.softwaremill.session.CsrfOptions._
+
+  def loginRoute =
+    randomTokenCsrfProtection(checkHeader) {
+      path("login") {
         get {
-          userInvalidateSession {
-            redirect("/login", StatusCodes.SeeOther)
+          val file = s"${publicDirectory}/login.html"
+          complete(createResponse(file))
+        }
+      } ~
+        path("logout") {
+          get {
+            userInvalidateSession {
+              redirect("/", StatusCodes.SeeOther)
+            }
+          }
+        } ~
+        toStrictEntity(3.seconds) {
+          path("doLogin") {
+            post {
+              formFields(("userId", "password", "isRememberMe".?, "referrer")) {
+                (userId, password, isRememberMe, referrer) =>
+                  if (exampleUsers.contains(ExampleUser(userId, password))) {
+
+                    val sessionContinuity = isRememberMe match {
+                      case Some(_) => refreshable
+                      case None => oneOff
+                    }
+
+                    setSession(sessionContinuity, usingCookies, UserSession(userId)) {
+                      setNewCsrfToken(checkHeader) {
+                        referrer match {
+                          case ref if ref == "/" =>
+                            redirect("/members/index.html", StatusCodes.SeeOther)
+                          case _ =>
+                            redirect(referrer, StatusCodes.SeeOther)
+                        }
+                      }
+                    }
+
+                  } else {
+                    referrer match {
+                      case ref if ref == "/" =>
+                        redirect("/login", StatusCodes.SeeOther)
+                      case _ =>
+                        redirect(referrer, StatusCodes.SeeOther)
+                    }
+                  }
+              }
+            }
+          }
+        } ~
+        path("getUser") {
+          get {
+            session(refreshable, usingCookies) { sessionResult =>
+              sessionResult match {
+                case Decoded(session) =>
+                  complete(session.userId)
+                case DecodedLegacy(session) =>
+                  complete(session.userId)
+                case CreatedFromToken(session) =>
+                  complete(session.userId)
+                case _ =>
+                  complete("unknown")
+              }
+            }
           }
         }
-      }
+    }
 }
 
 // Shutdown example

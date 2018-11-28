@@ -14,17 +14,10 @@ import akka.http.scaladsl.model.{
   HttpEntity,
   StatusCodes
 }
-
-// import com.softwaremill.session.{
-// InMemoryRefreshTokenStorage,
-// SessionConfig,
-// SessionManager,
-// SessionSerializer,
-// SingleValueSessionSerializer,
-// SessionUtil
-// }
-
-// import ServerApi._
+import akka.http.scaladsl.model.headers.{
+  Cookie,
+  `Set-Cookie`
+}
 
 class ServerApiSpec()
   extends WordSpecLike
@@ -52,6 +45,10 @@ class ServerApiSpec()
       }
     }
 
+  }
+
+  "The login route" should {
+    
     "ログインパスにpublic/login.htmlを返す" in {
       Get("/login") ~> api.loginRoute ~> check {
         val file = s"${current}/contents/public/login.html"
@@ -67,35 +64,39 @@ class ServerApiSpec()
       }
     }
 
-    "ログイン時、存在しないユーザーかつ、リンク元URIがルートパスの場合、loginページをリダイレクトする" in {
-      Post("/doLogin", FormData("userId" -> "aaa", "password" -> "111", "isRememberMe" -> "on", "referrer" -> "/")) ~>
-        api.loginRoute ~> check {
-          status shouldEqual StatusCodes.SeeOther
-          responseAs[String] shouldEqual
-            """The response to the request can be found under <a href="/login">this URI</a> using a GET method."""
-        }
+    "ログインに失敗し、リンク元URIがルートパスの場合、ログインページをリダイレクトする" in {
+      Get("/login") ~> api.loginRoute ~> check {
+
+        val file = s"${current}/contents/public/login.html"
+        responseAs[HttpEntity] shouldEqual readFile(file)
+
+        val Some(csrfCookie) = header[`Set-Cookie`]
+
+        Post("/doLogin", FormData("userId" -> "admin", "password" -> "111", "isRememberMe" -> "false", "referrer" -> "/")) ~>
+          addHeader(Cookie(api.sessionConfig.csrfCookieConfig.name, csrfCookie.cookie.value)) ~>
+          addHeader(api.sessionConfig.csrfSubmittedName, csrfCookie.cookie.value) ~>
+          api.loginRoute ~>
+          check {
+            status shouldEqual StatusCodes.SeeOther
+            responseAs[String] shouldEqual
+              """The response to the request can be found under <a href="/members/index.html">this URI</a> using a GET method."""
+          }
+      }
+
     }
 
-    "ログイン時、無効なパスワードかつ、リンク元URIがルートパスの場合、loginページをリダイレクトする" in {
-      Post("/doLogin", FormData("userId" -> "admin", "password" -> "aaa", "isRememberMe" -> "on", "referrer" -> "/")) ~>
-        api.loginRoute ~> check {
-          status shouldEqual StatusCodes.SeeOther
-          responseAs[String] shouldEqual
-            """The response to the request can be found under <a href="/login">this URI</a> using a GET method."""
-        }
-    }
+    // "ログイン時、ログインに失敗し、リンク元URIがルートパス以外の場合、loginページをリダイレクトする" in {
+    // Post(
+    // "/doLogin",
+    // FormData("userId" -> "aaa", "password" -> "111", "isRememberMe" -> "on", "referrer" -> "/contents/001.html")
+    // ) ~>
+    // api.loginRoute ~> check {
+    // status shouldEqual StatusCodes.SeeOther
+    // responseAs[String] shouldEqual
+    // """The response to the request can be found under <a href="/contents/001.html">this URI</a> using a GET method."""
+    // }
+    // }
 
-    "ログイン時、存在しないユーザーかつ、リンク元URIがルートパス以外の場合、loginページをリダイレクトする" in {
-      Post(
-        "/doLogin",
-        FormData("userId" -> "aaa", "password" -> "111", "isRememberMe" -> "on", "referrer" -> "/contents/001.html")
-      ) ~>
-        api.loginRoute ~> check {
-          status shouldEqual StatusCodes.SeeOther
-          responseAs[String] shouldEqual
-            """The response to the request can be found under <a href="/contents/001.html">this URI</a> using a GET method."""
-        }
-    }
   }
 
 }

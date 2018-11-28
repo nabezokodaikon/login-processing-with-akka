@@ -92,7 +92,7 @@ class ServerApi(system: ActorSystem)
     ExampleUser("user", "222")
   )
 
-  private val sessionConfig = SessionConfig.default(SessionUtil.randomServerSecret())
+  val sessionConfig = SessionConfig.default(SessionUtil.randomServerSecret())
   implicit val sessionManager = new SessionManager[UserSession](sessionConfig)
 
   // ブラウザ終了後もセッションを維持する場合。

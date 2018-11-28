@@ -204,7 +204,7 @@ class ServerApi(system: ActorSystem)
                 case CreatedFromToken(session) =>
                   complete(session.userId)
                 case _ =>
-                  complete("unknown")
+                  complete("Guest")
               }
             }
           }

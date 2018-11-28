@@ -96,7 +96,7 @@
         e.preventDefault();
       }
 
-      window.addEventListener("load", e => {
+      document.addEventListener("DOMContentLoaded", e => {
         checkInput();
         document.getElementById("form").addEventListener("submit", doLogin, false);
       }, false);

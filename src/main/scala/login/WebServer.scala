@@ -25,6 +25,9 @@ import com.softwaremill.session.{
   SingleValueSessionSerializer,
   SessionUtil
 }
+import com.softwaremill.session.CsrfDirectives._
+import com.softwaremill.session.CsrfOptions._
+
 import com.softwaremill.session.SessionDirectives._
 import com.softwaremill.session.SessionOptions._
 import com.softwaremill.session.SessionResult._
@@ -143,9 +146,6 @@ class ServerApi(system: ActorSystem)
       }
     }
 
-  import com.softwaremill.session.CsrfDirectives._
-  import com.softwaremill.session.CsrfOptions._
-
   def loginRoute =
     randomTokenCsrfProtection(checkHeader) {
       path("login") {
@@ -164,14 +164,11 @@ class ServerApi(system: ActorSystem)
         toStrictEntity(3.seconds) {
           path("doLogin") {
             post {
-              formFields(("userId", "password", "isRememberMe".?, "referrer")) {
+              formFields(("userId", "password", "isRememberMe".as[Boolean], "referrer")) {
                 (userId, password, isRememberMe, referrer) =>
                   if (exampleUsers.contains(ExampleUser(userId, password))) {
 
-                    val sessionContinuity = isRememberMe match {
-                      case Some(_) => refreshable
-                      case None => oneOff
-                    }
+                    val sessionContinuity = if (isRememberMe) refreshable else oneOff
 
                     setSession(sessionContinuity, usingCookies, UserSession(userId)) {
                       setNewCsrfToken(checkHeader) {

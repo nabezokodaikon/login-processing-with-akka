@@ -7,7 +7,7 @@
   <body>
     <a href="/">Index</a>
     <h1>Login</h1>
-    <form action="/doLogin" method="POST">
+    <form id="form">
       <div>
         <label for="userId">User ID</label>
         <input id="userId" name="userId" type="text">
@@ -32,32 +32,74 @@
     </form>
     <script type="text/javascript">
 
-      const host = location.origin;
-      const ref = document.referrer.replace(host, "");
-      const path = location.pathname;
+      function checkInput() {
+        const host = location.origin;
+        const ref = document.referrer.replace(host, "");
+        const path = location.pathname;
+        console.log(`ref: ${ref}, path: ${path}`);
 
-      console.log(`ref: ${ref}`);
-      console.log(`path: ${path}`);
+        const loginFailed = document.getElementById("loginFailed");
+        const referrer = document.getElementById("referrer");
 
-      if (ref.length > 1) {
-        document.getElementById("loginFailed").style.display = "";
-      } else {
-        document.getElementById("loginFailed").style.display = "none";
+        if (ref.length > 1) {
+          loginFailed.style.display = "";
+        } else {
+          loginFailed.style.display = "none";
+        }
+
+        if (path == "/login"){
+          loginFailed.style.display = "none";
+        }
+
+        if (ref == "/login"){
+          loginFailed.style.display = "";
+        }
+
+        if (path == "/login") {
+          referrer.value = "/";
+        } else {
+          referrer.value = path;
+        }
       }
 
-      if (path == "/login"){
-        document.getElementById("loginFailed").style.display = "none";
+      function doLogin(e) {
+        const cookieMap = new Map(
+          document.cookie.split(";").map(x => {
+            const data = x.split("=");
+            const key = data[0];
+            const value = data[1];
+            return [key, decodeURIComponent(value)];
+        }));
+
+        const token = cookieMap.get("XSRF-TOKEN");
+
+        const formData = new FormData();
+        formData.append("userId", document.getElementById("userId").value);
+        formData.append("password", document.getElementById("password").value);
+        formData.append("isRememberMe", document.getElementById("isRememberMe").checked);
+        formData.append("referrer", document.getElementById("referrer").value);
+
+        fetch("/doLogin", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-XSRF-TOKEN": token
+          },
+          body: formData
+        })
+        .then(res => {
+          location.href = res.url;
+        }).catch(function(err) {
+          console.info(err);
+        });
+
+        e.preventDefault();
       }
 
-      if (ref == "/login"){
-        document.getElementById("loginFailed").style.display = "";
-      }
-
-      if (path == "/login") {
-        document.getElementById("referrer").value = "/";
-      } else {
-        document.getElementById("referrer").value = path;
-      }
+      window.addEventListener("load", e => {
+        checkInput();
+        document.getElementById("form").addEventListener("submit", doLogin, false);
+      }, false);
 
     </script>
   </body>

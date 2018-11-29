@@ -106,38 +106,47 @@ class ServerApiSpec()
 
     }
 
-    // "ログインに失敗し、リンク元URIがルートパス以外の場合、リンク元URIをリダイレクトする" in {
-    // Get("/login") ~> api.loginRoute ~> check {
+    "ログインに失敗し、リンク元URIがルートパス以外の場合、リンク元をリダイレクトする" in {
+      Get("/login") ~> api.loginRoute ~> check {
 
-    // val file = s"${current}/contents/public/login.html"
-    // responseAs[HttpEntity] shouldEqual readFile(file)
+        val file = s"${current}/contents/public/login.html"
+        responseAs[HttpEntity] shouldEqual readFile(file)
 
-    // val Some(csrfCookie) = header[`Set-Cookie`]
+        val Some(csrfCookie) = header[`Set-Cookie`]
 
-    // Post("/doLogin", FormData("userId" -> "admin", "password" -> "", "isRememberMe" -> "false", "referrer" -> "/members/003.html")) ~>
-    // addHeader(Cookie(api.sessionConfig.csrfCookieConfig.name, csrfCookie.cookie.value)) ~>
-    // addHeader(api.sessionConfig.csrfSubmittedName, csrfCookie.cookie.value) ~>
-    // api.loginRoute ~>
-    // check {
-    // status shouldEqual StatusCodes.SeeOther
-    // responseAs[String] shouldEqual
-    // """The response to the request can be found under <a href="/members/index.html">this URI</a> using a GET method."""
-    // }
-    // }
+        Post("/doLogin", FormData("userId" -> "admin", "password" -> "", "isRememberMe" -> "false", "referrer" -> "/members/003.html")) ~>
+          addHeader(Cookie(api.sessionConfig.csrfCookieConfig.name, csrfCookie.cookie.value)) ~>
+          addHeader(api.sessionConfig.csrfSubmittedName, csrfCookie.cookie.value) ~>
+          api.loginRoute ~>
+          check {
+            status shouldEqual StatusCodes.SeeOther
+            responseAs[String] shouldEqual
+              """The response to the request can be found under <a href="/members/003.html">this URI</a> using a GET method."""
+          }
+      }
 
-    // }
+    }
 
-    // "ログイン時、ログインに失敗し、リンク元URIがルートパス以外の場合、loginページをリダイレクトする" in {
-    // Post(
-    // "/doLogin",
-    // FormData("userId" -> "aaa", "password" -> "111", "isRememberMe" -> "on", "referrer" -> "/contents/001.html")
-    // ) ~>
-    // api.loginRoute ~> check {
-    // status shouldEqual StatusCodes.SeeOther
-    // responseAs[String] shouldEqual
-    // """The response to the request can be found under <a href="/contents/001.html">this URI</a> using a GET method."""
-    // }
-    // }
+    "ログインに成功し、リンク元URIがルートパス以外の場合、リンク元をリダイレクトする" in {
+      Get("/login") ~> api.loginRoute ~> check {
+
+        val file = s"${current}/contents/public/login.html"
+        responseAs[HttpEntity] shouldEqual readFile(file)
+
+        val Some(csrfCookie) = header[`Set-Cookie`]
+
+        Post("/doLogin", FormData("userId" -> "admin", "password" -> "111", "isRememberMe" -> "true", "referrer" -> "/members/003.html")) ~>
+          addHeader(Cookie(api.sessionConfig.csrfCookieConfig.name, csrfCookie.cookie.value)) ~>
+          addHeader(api.sessionConfig.csrfSubmittedName, csrfCookie.cookie.value) ~>
+          api.loginRoute ~>
+          check {
+            status shouldEqual StatusCodes.SeeOther
+            responseAs[String] shouldEqual
+              """The response to the request can be found under <a href="/members/003.html">this URI</a> using a GET method."""
+          }
+      }
+
+    }
 
   }
 

@@ -3,9 +3,9 @@ jdk: oraclejdk8
 scala:
     - 2.12.7
 script:
-    sbt clean coverage test
+    - sbt clean coverage test coverageReport
 after_success:
-    sbt coverageReport coveralls
+    - bash <(curl -s https://codecov.io/bash)
 cache:
     directories:
         - $HOME/.ivy2/cache

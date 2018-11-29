@@ -48,7 +48,7 @@ class ServerApiSpec()
   }
 
   "The login route" should {
-    
+
     "ログインパスにpublic/login.htmlを返す" in {
       Get("/login") ~> api.loginRoute ~> check {
         val file = s"${current}/contents/public/login.html"

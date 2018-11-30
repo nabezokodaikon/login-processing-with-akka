@@ -16,6 +16,7 @@ import akka.http.scaladsl.model.{
 }
 import akka.http.scaladsl.model.headers.{
   Cookie,
+  HttpCookie,
   `Set-Cookie`
 }
 
@@ -25,6 +26,17 @@ class ServerApiSpec()
   with BeforeAndAfterAll
   with ScalatestRouteTest
   with LazyLogging {
+
+  class TestUsingCookies(api: ServerApi) {
+    val sessionCookieName = api.sessionConfig.sessionCookieConfig.name
+    val refreshTokenCookieName = api.sessionConfig.refreshTokenCookieConfig.name
+
+    def cookiesMap: Map[String, HttpCookie] =
+      headers.collect { case `Set-Cookie`(cookie) => cookie.name -> cookie }.toMap
+
+    def getSession = cookiesMap.get(sessionCookieName).map(_.value)
+    def setSessionHeader(s: String) = Cookie(sessionCookieName, s)
+  }
 
   val api = new ServerApi(system)
 

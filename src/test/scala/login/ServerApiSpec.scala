@@ -160,6 +160,36 @@ class ServerApiSpec()
 
     }
 
+    "ログインしていない場合、ユーザー名'Guest'を取得する" in {
+      Get("/getUser") ~> api.loginRoute ~> check {
+        responseAs[String] shouldEqual "Guest"
+      }
+    }
+
+    "ログインしている場合、そのユーザー名を取得する" in {
+      Get("/login") ~> api.loginRoute ~> check {
+
+        val Some(csrfCookie) = header[`Set-Cookie`]
+
+        Post("/doLogin", FormData("userId" -> "admin", "password" -> "111", "isRememberMe" -> "true", "referrer" -> "/")) ~>
+          addHeader(Cookie(api.sessionConfig.csrfCookieConfig.name, csrfCookie.cookie.value)) ~>
+          addHeader(api.sessionConfig.csrfSubmittedName, csrfCookie.cookie.value) ~>
+          api.loginRoute ~>
+          check {
+
+            val using = new TestUsingCookies(api)
+            val Some(s) = using.getSession
+
+            Get("/getUser") ~>
+              addHeader(using.setSessionHeader(s)) ~>
+              api.loginRoute ~>
+              check {
+                responseAs[String] shouldEqual "admin"
+              }
+          }
+      }
+    }
+
   }
 
 }
